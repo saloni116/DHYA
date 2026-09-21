@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum SessionStatus {
+  COMPLETED
+  ABANDONED
+  CANCELLED
+}
+
+enum ReminderType {
+  TASK
+  EVENT
+  CUSTOM
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  icon      String   @default("folder")
+  color     String   @default("#D4AF37")
+  isDefault Boolean  @default(false)
+  tasks     Task[]
+  events    Event[]
+  notes     Note[]
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id               Int            @id @default(autoincrement())
+  title            String
+  description      String?
+  priority         Priority       @default(MEDIUM)
+  status           TaskStatus     @default(TODO)
+  completed        Boolean        @default(false)
+  estimatedMinutes Int            @default(0)
+  dueDate          DateTime?
+  dueTime          String?
+  recurrence       String?
+  categoryId       Int?
+  category         Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  subtasks         Subtask[]
+  reminders        Reminder[]
+  focusSessions    FocusSession[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @default(now()) @updatedAt
+}
+
+model Subtask {
+  id        Int      @id @default(autoincrement())
+  title     String
+  completed Boolean  @default(false)
+  taskId    Int
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model Event {
+  id            Int        @id @default(autoincrement())
+  title         String
+  description   String?
+  startDateTime DateTime
+  endDateTime   DateTime
+  categoryId    Int?
+  category      Category?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  recurrence    String?
+  reminders     Reminder[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @default(now()) @updatedAt
+}
+
+model Reminder {
+  id          Int          @id @default(autoincrement())
+  title       String
+  scheduledAt DateTime
+  type        ReminderType @default(CUSTOM)
+  taskId      Int?
+  task        Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  eventId     Int?
+  event       Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recurrence  String?
+  completed   Boolean      @default(false)
+  dismissed   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @default(now()) @updatedAt
+}
+
+model Note {
+  id         Int       @id @default(autoincrement())
+  title      String
+  content    String
+  categoryId Int?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+}
+
+model FocusSession {
+  id             Int           @id @default(autoincrement())
+  taskId         Int
+  task           Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  startTime      DateTime      @default(now())
+  endTime        DateTime      @default(now())
+  plannedMinutes Int           @default(0)
+  actualMinutes  Int           @default(0)
+  status         SessionStatus @default(COMPLETED)
+  remark         String?
+  completed      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+}
