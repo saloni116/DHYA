@@ -5,8 +5,8 @@ services:
     region: singapore
     plan: free
     rootDir: backend/dhya-backend
-    buildCommand: npm install && npx prisma generate && npm run build
-    startCommand: npx prisma migrate deploy && npm run start:prod
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && node dist/main
     envVars:
       - key: DATABASE_URL
         fromDatabase:
