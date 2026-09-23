@@ -1,8 +1,12 @@
--- CreateEnum
-CREATE TYPE "public"."ReminderType" AS ENUM ('TASK', 'EVENT', 'CUSTOM');
+-- CreateEnum (safe - ignore if exists)
+DO $$ BEGIN
+    CREATE TYPE "public"."ReminderType" AS ENUM ('TASK', 'EVENT', 'CUSTOM');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- CreateTable
-CREATE TABLE "public"."Category" (
+-- CreateTable Category
+CREATE TABLE IF NOT EXISTS "public"."Category" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "icon" TEXT NOT NULL DEFAULT 'folder',
@@ -13,8 +17,8 @@ CREATE TABLE "public"."Category" (
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "public"."Subtask" (
+-- CreateTable Subtask
+CREATE TABLE IF NOT EXISTS "public"."Subtask" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "completed" BOOLEAN NOT NULL DEFAULT false,
@@ -25,8 +29,8 @@ CREATE TABLE "public"."Subtask" (
     CONSTRAINT "Subtask_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "public"."Event" (
+-- CreateTable Event
+CREATE TABLE IF NOT EXISTS "public"."Event" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -40,8 +44,8 @@ CREATE TABLE "public"."Event" (
     CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "public"."Reminder" (
+-- CreateTable Reminder
+CREATE TABLE IF NOT EXISTS "public"."Reminder" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "scheduledAt" TIMESTAMP(3) NOT NULL,
@@ -57,8 +61,8 @@ CREATE TABLE "public"."Reminder" (
     CONSTRAINT "Reminder_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "public"."Note" (
+-- CreateTable Note
+CREATE TABLE IF NOT EXISTS "public"."Note" (
     "id" SERIAL NOT NULL,
     "title" TEXT NOT NULL,
     "content" TEXT NOT NULL,
@@ -69,8 +73,8 @@ CREATE TABLE "public"."Note" (
     CONSTRAINT "Note_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "public"."FocusSession" (
+-- CreateTable FocusSession (safe - IF NOT EXISTS)
+CREATE TABLE IF NOT EXISTS "public"."FocusSession" (
     "id" SERIAL NOT NULL,
     "taskId" INTEGER NOT NULL,
     "startTime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -84,23 +88,46 @@ CREATE TABLE "public"."FocusSession" (
     CONSTRAINT "FocusSession_pkey" PRIMARY KEY ("id")
 );
 
--- Update Task table with missing columns
-ALTER TABLE "public"."Task" ADD COLUMN "description" TEXT;
-ALTER TABLE "public"."Task" ADD COLUMN "estimatedMinutes" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "public"."Task" ADD COLUMN "dueDate" TIMESTAMP(3);
-ALTER TABLE "public"."Task" ADD COLUMN "dueTime" TEXT;
-ALTER TABLE "public"."Task" ADD COLUMN "recurrence" TEXT;
-ALTER TABLE "public"."Task" ADD COLUMN "categoryId" INTEGER;
-ALTER TABLE "public"."Task" ADD COLUMN "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE "public"."Task" ADD CONSTRAINT "Task_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+-- Add missing columns to Task (safe - ignore if column already exists)
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "description" TEXT;
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "estimatedMinutes" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "dueDate" TIMESTAMP(3);
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "dueTime" TEXT;
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "recurrence" TEXT;
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "categoryId" INTEGER;
+ALTER TABLE "public"."Task" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
 
--- Add foreign keys
-ALTER TABLE "public"."Subtask" ADD CONSTRAINT "Subtask_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "public"."Event" ADD CONSTRAINT "Event_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "public"."Reminder" ADD CONSTRAINT "Reminder_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "public"."Reminder" ADD CONSTRAINT "Reminder_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "public"."Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "public"."Note" ADD CONSTRAINT "Note_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "public"."FocusSession" ADD CONSTRAINT "FocusSession_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Add FocusSession status column if missing
+ALTER TABLE "public"."FocusSession" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'COMPLETED';
 
--- CreateIndex
-CREATE UNIQUE INDEX "Category_name_key" ON "public"."Category"("name");
+-- Add foreign keys (safe - ignore if already exists)
+DO $$ BEGIN
+    ALTER TABLE "public"."Task" ADD CONSTRAINT "Task_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."Subtask" ADD CONSTRAINT "Subtask_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."Event" ADD CONSTRAINT "Event_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."Reminder" ADD CONSTRAINT "Reminder_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."Reminder" ADD CONSTRAINT "Reminder_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "public"."Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."Note" ADD CONSTRAINT "Note_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "public"."Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE "public"."FocusSession" ADD CONSTRAINT "FocusSession_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "public"."Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+-- CreateIndex (safe)
+CREATE UNIQUE INDEX IF NOT EXISTS "Category_name_key" ON "public"."Category"("name");

@@ -6,7 +6,7 @@ services:
     plan: free
     rootDir: backend/dhya-backend
     buildCommand: npm install --include=dev && npx prisma generate && npm run build
-    startCommand: npx prisma migrate deploy && node dist/main
+    startCommand: npx prisma migrate resolve --rolled-back 20260923154200_add_missing_tables 2>/dev/null || true && npx prisma migrate deploy && node dist/main
     envVars:
       - key: DATABASE_URL
         fromDatabase:
